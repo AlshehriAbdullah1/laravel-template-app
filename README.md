@@ -10,8 +10,6 @@
 - **Telescope** (local/staging observability)
 - JSON‑only responses, request correlation (`X‑Request‑Id`), optional **Idempotency** middleware
 
-> For a deeper walkthrough, see the **Developer Guide** (add it to `/docs/Developer-Guide.md`).
-
 ---
 
 ## Table of contents
@@ -235,14 +233,4 @@ routes/api.php                   # mounts app/Interfaces/Http/routes_v1.php unde
 - **Telescope migration collision** → remove duplicate migrations or reset SQLite DB
 
 ---
-
-## License
-
-MIT (or your choice). Update this section to match your project.
-
----
-
-## Credits
-
-Built on Laravel 12 with first‑class packages: Sanctum, Spatie Permissions, Spatie Query Builder, Predis, and Telescope.
 
