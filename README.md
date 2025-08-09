@@ -1,61 +1,248 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel 12 API Template
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Clean Architecture + Modular Monolith** starter for building large‑scale, API‑first backends. Ships with:
 
-## About Laravel
+- Laravel **12** (routing/middleware configured in `bootstrap/app.php`)
+- **Sanctum** token auth (mobile, server‑to‑server)
+- **Spatie Permissions** (RBAC)
+- **Spatie Query Builder** (filter/sort/include)
+- **Predis/Redis** (cache/queue/session)
+- **Telescope** (local/staging observability)
+- JSON‑only responses, request correlation (`X‑Request‑Id`), optional **Idempotency** middleware
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> For a deeper walkthrough, see the **Developer Guide** (add it to `/docs/Developer-Guide.md`).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Table of contents
 
-## Learning Laravel
+- [Architecture](#architecture)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Environment](#environment)
+- [Run & verify](#run--verify)
+- [Auth quick demo](#auth-quick-demo)
+- [Project structure](#project-structure)
+- [Add a new feature](#add-a-new-feature)
+- [Observability (Telescope)](#observability-telescope)
+- [Queues & jobs](#queues--jobs)
+- [Production checklist](#production-checklist)
+- [Troubleshooting](#troubleshooting)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Architecture
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+**Clean Architecture** with strict boundaries:
 
-## Laravel Sponsors
+- **Domain** – Entities, Value Objects, Repository *interfaces* (business rules, pure PHP)
+- **Application** – Use cases (commands/queries), DTOs, app‑level contracts
+- **Infrastructure** – Eloquent models, repository implementations, HTTP/Redis/PG adapters
+- **Interfaces** – HTTP layer: Controllers, Requests, Resources, Middleware, versioned routes
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+API is **versioned** at `/api/v1/...` and uses middleware grouping/throttling defined in `bootstrap/app.php`.
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Requirements
 
-## Contributing
+- PHP **8.2+** (tested with 8.4)
+- Composer
+- SQLite (dev) or PostgreSQL (prod) with `pdo_pgsql`
+- Redis for cache/queue/session in prod (Predis client)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## Quick start
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+# 1) Install dependencies
+composer install
 
-## Security Vulnerabilities
+# 2) Configure environment
+cp .env.example .env
+php artisan key:generate
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# 3) Local database (SQLite)
+# Windows PowerShell
+ni database/database.sqlite -ItemType File
+# macOS/Linux
+# touch database/database.sqlite
+
+# 4) Migrate (+ optional seed for roles/permissions)
+php artisan migrate
+php artisan db:seed --class=PermissionSeeder   # optional
+
+# 5) Run the API
+php artisan serve
+```
+
+---
+
+## Environment
+
+**Local (.env)**
+
+```
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8000
+
+DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite
+
+CACHE_DRIVER=file
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+
+TELESCOPE_ENABLED=true
+```
+
+**Production (.env)**
+
+```
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://api.example.com
+
+DB_CONNECTION=pgsql
+DB_HOST=postgres
+DB_PORT=5432
+DB_DATABASE=app
+DB_USERNAME=app
+DB_PASSWORD=secret
+
+CACHE_DRIVER=redis
+QUEUE_CONNECTION=redis
+SESSION_DRIVER=redis
+REDIS_CLIENT=predis
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+TELESCOPE_ENABLED=false
+```
+
+Switch DBs by updating `.env` and running `php artisan migrate` (ensure `pdo_pgsql` is enabled for PostgreSQL).
+
+---
+
+## Run & verify
+
+- **Ping**: `GET /api/v1/ping` → `{ "pong": true }`
+- **List routes**: `php artisan route:list`
+
+Routing/middleware groups and exception rendering live in `` (Laravel 12 style).
+
+---
+
+## Auth quick demo
+
+**Register**
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alice","email":"alice@example.com","password":"secret123","password_confirmation":"secret123"}'
+```
+
+**Login**
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","password":"secret123"}'
+```
+
+**Me**
+
+```bash
+curl http://127.0.0.1:8000/api/v1/auth/me \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Add RBAC with Spatie Permissions and protect routes with `->middleware('permission:...')`.
+
+---
+
+## Project structure
+
+```
+app/
+├─ Application/                  # Use cases, DTOs, app contracts
+├─ Domain/                       # Entities + repository interfaces
+├─ Infrastructure/               # Eloquent models, repos, providers, security
+├─ Interfaces/Http/              # Controllers, Requests, Resources, Middleware, routes_v1.php
+├─ Models/                       # Thin aliases (optional for BC)
+└─ Providers/                    # App & Telescope providers
+
+bootstrap/app.php                # routing, middleware, JSON errors, rate limiting
+routes/api.php                   # mounts app/Interfaces/Http/routes_v1.php under /api/v1
+```
+
+**Cross‑cutting middleware**
+
+- `ForceJsonResponse` – forces JSON `Accept`
+- `RequestId` – adds `X-Request-Id` (log correlation)
+- `Idempotency` (optional) – cache first POST response by `Idempotency-Key`
+
+---
+
+## Add a new feature
+
+1. **Domain** – Define entity + repository interface
+2. **Application** – Create use case in `Application/<Feature>/UseCases` with `execute(...)`
+3. **Infrastructure** – Eloquent model + repository implementation, bind interface → implementation in `InfrastructureServiceProvider`
+4. **Interfaces** – Form Requests, Resource, Controller, and route(s) in `app/Interfaces/Http/routes_v1.php`
+
+> See the Product example and full instructions in the Developer Guide.
+
+---
+
+## Observability (Telescope)
+
+- Install once: `php artisan telescope:install && php artisan migrate`
+- Access UI at `/telescope` (open by default in `local`), tighten auth for other envs in `App\Providers\TelescopeServiceProvider`
+- Toggle watchers in `config/telescope.php`; keep disabled in production unless debugging
+
+---
+
+## Queues & jobs
+
+- Dev: `QUEUE_CONNECTION=sync`
+- Prod: `QUEUE_CONNECTION=redis` and run workers:
+  ```bash
+  php artisan queue:work --tries=3 --max-time=3600
+  ```
+- Consider **Horizon** (Linux/containers) for queue monitoring
+
+---
+
+## Production checklist
+
+- `APP_DEBUG=false`, HTTPS, trusted proxies configured
+- PostgreSQL, Redis (cache/queue/session), workers supervised
+- CORS configured; if SPA cookie mode, set `SANCTUM_STATEFUL_DOMAINS` & `SESSION_DOMAIN`
+- Read replicas & PgBouncer for scale; tune rate limits in `bootstrap/app.php`
+- Telescope disabled or gated; log shipping with `request_id` correlation
+
+---
+
+## Troubleshooting
+
+- **Route missing** → ensure `api:` mapping exists in `bootstrap/app.php`; run `php artisan route:list`
+- **Class not found** → check PSR‑4 in `composer.json`, then `composer dump-autoload`
+- **405 Method Not Allowed** → wrong HTTP verb; compare with `route:list`
+- **Telescope migration collision** → remove duplicate migrations or reset SQLite DB
+
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT (or your choice). Update this section to match your project.
+
+---
+
+## Credits
+
+Built on Laravel 12 with first‑class packages: Sanctum, Spatie Permissions, Spatie Query Builder, Predis, and Telescope.
+
