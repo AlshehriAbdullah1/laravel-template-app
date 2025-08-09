@@ -12,6 +12,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         //
+        $this->app->register(\App\Infrastructure\Providers\InfrastructureServiceProvider::class);
+        $this->app->register( \App\Providers\TelescopeServiceProvider::class);
+       
+
     }
 
     /**

@@ -28,6 +28,19 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
                    $entry->isScheduledTask() ||
                    $entry->hasMonitoredTag();
         });
+
+         // Auth for the UI
+        Telescope::auth(function ($request) {
+            // Anyone in local
+            if (app()->isLocal()) {
+                return true;
+            }
+
+            // In non-local, require an authenticated user with admin role
+            $user = $request->user();
+            return $user && method_exists($user, 'hasRole') && $user->hasRole('admin');
+            // or: return in_array($request->ip(), ['127.0.0.1']); // IP allowlist
+        });
     }
 
     /**
@@ -55,10 +68,8 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     protected function gate(): void
     {
-        Gate::define('viewTelescope', function ($user) {
-            return in_array($user->email, [
-                //
-            ]);
+         Gate::define('viewTelescope', function ($user = null) {
+            return app()->isLocal() || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
         });
     }
 }
